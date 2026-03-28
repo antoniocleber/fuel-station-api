@@ -1,0 +1,35 @@
+# ── Gradle ───────────────────────────────────────────────────────────────────
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.classpath
+*.project
+.settings/
+*.factorypath
+
+# ── Spring Boot ───────────────────────────────────────────────────────────────
+/data/
+spring-shell.log
+
+# ── H2 Database (arquivo local) ───────────────────────────────────────────────
+*.mv.db
+*.trace.db
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Coverage ──────────────────────────────────────────────────────────────────
+/build/reports/jacoco/
