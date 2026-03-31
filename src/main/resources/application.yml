@@ -68,6 +68,10 @@ springdoc:
     operationsSorter: method
     tagsSorter: alpha
 
+# ── CORS ──────────────────────────────────────────────────────────────────────────
+# Configurado via CorsConfig.java (com.fuelstation.config)
+# Origens permitidas: http://localhost:5173 (frontend)
+
 # ── Logging ───────────────────────────────────────────────────────────────────────
 logging:
   level:
