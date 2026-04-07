@@ -213,9 +213,7 @@ public class FuelingService {
             request.setTotalValue(calculatedTotal);
             log.debug("Valor total calculado: {} (liters={} × price={})",
                     calculatedTotal, request.getLiters(), pricePerLiter);
-        }
-
-        if (!hasLiters && hasTotalValue) {
+        } else if (!hasLiters && hasTotalValue) {
             // liters = totalValue / pricePerLiter
             BigDecimal calculatedLiters = request.getTotalValue()
                     .divide(pricePerLiter, 3, RoundingMode.HALF_UP);

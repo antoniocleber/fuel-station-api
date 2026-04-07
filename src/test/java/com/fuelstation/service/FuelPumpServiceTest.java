@@ -138,6 +138,7 @@ class FuelPumpServiceTest {
         @DisplayName("deve lançar ResourceNotFoundException quando combustível não existe")
         void shouldThrowWhenFuelTypeNotFound() {
             given(fuelPumpRepository.existsByName("Bomba 01")).willReturn(false);
+            // lenient: Set iteration order is non-deterministic, so this stub may or may not be called
             lenient().doReturn(gasolina).when(fuelTypeService).findEntityById(1L);
             given(fuelTypeService.findEntityById(2L))
                     .willThrow(new ResourceNotFoundException("Tipo de Combustível", "id", 2L));
