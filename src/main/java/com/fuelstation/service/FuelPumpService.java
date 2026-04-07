@@ -97,10 +97,14 @@ public class FuelPumpService {
     /**
      * Atualiza dados de uma bomba existente.
      *
+     * <p>Ao editar, os novos tipos de combustível são <strong>adicionados</strong>
+     * aos existentes (merge), em vez de sobrescrever. Se o tipo de combustível
+     * já estiver associado à bomba, ele é ignorado (sem duplicatas).</p>
+     *
      * @param id      ID da bomba
-     * @param request novos dados (incluindo tipos de combustível)
+     * @param request novos dados (incluindo tipos de combustível a adicionar)
      * @return DTO atualizado
-     * @throws BusinessException if fuelTypeIds is empty
+     * @throws BusinessException se fuelTypeIds is empty
      */
     @Transactional
     public FuelPumpResponse update(Long id, FuelPumpRequest request) {
@@ -113,14 +117,18 @@ public class FuelPumpService {
             throw new BusinessException("Uma bomba deve ter pelo menos um tipo de combustível associado.");
         }
 
-        // Carregar todos os combustíveis informados
-        Set<FuelType> fuelTypes = loadFuelTypes(request.getFuelTypeIds());
+        // Carregar os novos tipos de combustível informados
+        Set<FuelType> newFuelTypes = loadFuelTypes(request.getFuelTypeIds());
 
         fuelPumpMapper.updateEntityFromRequest(request, entity);
-        entity.setFuelTypes(fuelTypes);
+
+        // Merge: adicionar novos tipos aos existentes (sem duplicatas - Set garante unicidade)
+        Set<FuelType> existingFuelTypes = entity.getFuelTypes();
+        existingFuelTypes.addAll(newFuelTypes);
+        entity.setFuelTypes(existingFuelTypes);
 
         FuelPump saved = fuelPumpRepository.save(entity);
-        log.info("Bomba id={} atualizada associada a {} tipo(s) de combustível", id, fuelTypes.size());
+        log.info("Bomba id={} atualizada, total de {} tipo(s) de combustível", id, saved.getFuelTypes().size());
         return fuelPumpMapper.toResponse(saved);
     }
 

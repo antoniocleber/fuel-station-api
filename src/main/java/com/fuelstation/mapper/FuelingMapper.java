@@ -24,16 +24,18 @@ public interface FuelingMapper {
     @Mapping(target = "pump.id", source = "pump.id")
     @Mapping(target = "pump.name", source = "pump.name")
     @Mapping(target = "pump.fuelTypes", source = "pump.fuelTypes")
+    @Mapping(target = "fuelType", source = "fuelType")
     FuelingResponse toResponse(Fueling fueling);
 
     List<FuelingResponse> toResponseList(List<Fueling> fuelings);
 
     /**
      * Converte DTO de criação em entidade parcial.
-     * O pump é resolvido pelo service a partir do pumpId.
+     * O pump e fuelType são resolvidos pelo service a partir dos IDs.
      */
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "pump", ignore = true)
+    @Mapping(target = "fuelType", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     Fueling toEntity(FuelingRequest request);
@@ -43,6 +45,7 @@ public interface FuelingMapper {
      */
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "pump", ignore = true)
+    @Mapping(target = "fuelType", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     void updateEntityFromRequest(FuelingRequest request, @MappingTarget Fueling target);

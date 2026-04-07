@@ -1,22 +1,30 @@
 package com.fuelstation.service;
 
+import com.fuelstation.exception.BusinessException;
 import com.fuelstation.exception.ResourceNotFoundException;
 import com.fuelstation.mapper.FuelingMapper;
 import com.fuelstation.model.dto.request.FuelingRequest;
 import com.fuelstation.model.dto.response.FuelingResponse;
 import com.fuelstation.model.entity.Fueling;
 import com.fuelstation.model.entity.FuelPump;
+import com.fuelstation.model.entity.FuelType;
 import com.fuelstation.repository.FuelingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 
 /**
  * Serviço com as regras de negócio para {@link Fueling} (Abastecimentos).
+ *
+ * <p>Ao criar ou atualizar um abastecimento, o front-end pode enviar apenas
+ * {@code liters} ou apenas {@code totalValue}. O valor ausente é calculado
+ * automaticamente a partir do preço unitário do tipo de combustível informado.</p>
  */
 @Slf4j
 @Service
@@ -27,6 +35,7 @@ public class FuelingService {
 
     private final FuelingRepository fuelingRepository;
     private final FuelPumpService fuelPumpService;
+    private final FuelTypeService fuelTypeService;
     private final FuelingMapper fuelingMapper;
 
     // ── Listagem ───────────────────────────────────────────────────────────────
@@ -76,17 +85,27 @@ public class FuelingService {
     /**
      * Registra um novo abastecimento.
      *
+     * <p>Calcula automaticamente {@code liters} ou {@code totalValue} quando
+     * apenas um dos dois é informado pelo front-end.</p>
+     *
      * @param request dados de entrada
      * @return DTO do abastecimento criado
-     * @throws ResourceNotFoundException se a bomba informada não existir
+     * @throws ResourceNotFoundException se a bomba ou tipo de combustível não existir
+     * @throws BusinessException se nenhum dos dois (liters/totalValue) for informado,
+     *         ou se o tipo de combustível não pertencer à bomba informada
      */
     @Transactional
     public FuelingResponse create(FuelingRequest request) {
         log.info("Registrando abastecimento na bomba id={}", request.getPumpId());
         FuelPump pump = fuelPumpService.findEntityById(request.getPumpId());
+        FuelType fuelType = fuelTypeService.findEntityById(request.getFuelTypeId());
+
+        validateFuelTypeInPump(pump, fuelType);
+        calculateMissingValues(request, fuelType);
 
         Fueling entity = fuelingMapper.toEntity(request);
         entity.setPump(pump);
+        entity.setFuelType(fuelType);
 
         Fueling saved = fuelingRepository.save(entity);
 
@@ -112,9 +131,14 @@ public class FuelingService {
                 .orElseThrow(() -> new ResourceNotFoundException(RESOURCE_NAME, "id", id));
 
         FuelPump pump = fuelPumpService.findEntityById(request.getPumpId());
+        FuelType fuelType = fuelTypeService.findEntityById(request.getFuelTypeId());
+
+        validateFuelTypeInPump(pump, fuelType);
+        calculateMissingValues(request, fuelType);
 
         fuelingMapper.updateEntityFromRequest(request, entity);
         entity.setPump(pump);
+        entity.setFuelType(fuelType);
 
         fuelingRepository.save(entity);
         log.info("Abastecimento id={} atualizado", id);
@@ -138,5 +162,64 @@ public class FuelingService {
         }
         fuelingRepository.deleteById(id);
         log.info("Abastecimento id={} removido", id);
+    }
+
+    // ── Helpers internos ───────────────────────────────────────────────────────
+
+    /**
+     * Valida que o tipo de combustível pertence à bomba informada.
+     *
+     * @param pump     bomba do abastecimento
+     * @param fuelType tipo de combustível
+     * @throws BusinessException se o tipo de combustível não estiver associado à bomba
+     */
+    private void validateFuelTypeInPump(FuelPump pump, FuelType fuelType) {
+        boolean pumpHasFuelType = pump.getFuelTypes().stream()
+                .anyMatch(ft -> ft.getId().equals(fuelType.getId()));
+
+        if (!pumpHasFuelType) {
+            throw new BusinessException(String.format(
+                    "O tipo de combustível '%s' (id=%d) não está associado à bomba '%s' (id=%d).",
+                    fuelType.getName(), fuelType.getId(), pump.getName(), pump.getId()));
+        }
+    }
+
+    /**
+     * Calcula o valor ausente (liters ou totalValue) com base no preço unitário.
+     *
+     * <ul>
+     *   <li>Se apenas {@code liters}: totalValue = liters × pricePerLiter (2 casas)</li>
+     *   <li>Se apenas {@code totalValue}: liters = totalValue / pricePerLiter (3 casas)</li>
+     *   <li>Se ambos informados: mantém os valores do request sem alteração</li>
+     *   <li>Se nenhum informado: lança BusinessException</li>
+     * </ul>
+     */
+    private void calculateMissingValues(FuelingRequest request, FuelType fuelType) {
+        BigDecimal pricePerLiter = fuelType.getPricePerLiter();
+
+        boolean hasLiters = request.getLiters() != null;
+        boolean hasTotalValue = request.getTotalValue() != null;
+
+        if (!hasLiters && !hasTotalValue) {
+            throw new BusinessException(
+                    "É obrigatório informar a quantidade de litros ou o valor total do abastecimento.");
+        }
+
+        if (hasLiters && !hasTotalValue) {
+            // totalValue = liters × pricePerLiter
+            BigDecimal calculatedTotal = request.getLiters()
+                    .multiply(pricePerLiter)
+                    .setScale(2, RoundingMode.HALF_UP);
+            request.setTotalValue(calculatedTotal);
+            log.debug("Valor total calculado: {} (liters={} × price={})",
+                    calculatedTotal, request.getLiters(), pricePerLiter);
+        } else if (!hasLiters && hasTotalValue) {
+            // liters = totalValue / pricePerLiter
+            BigDecimal calculatedLiters = request.getTotalValue()
+                    .divide(pricePerLiter, 3, RoundingMode.HALF_UP);
+            request.setLiters(calculatedLiters);
+            log.debug("Litros calculados: {} (totalValue={} / price={})",
+                    calculatedLiters, request.getTotalValue(), pricePerLiter);
+        }
     }
 }

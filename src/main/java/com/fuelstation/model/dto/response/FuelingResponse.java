@@ -23,6 +23,9 @@ public class FuelingResponse {
     /** Resumo da bomba utilizada no abastecimento. */
     private PumpSummary pump;
 
+    /** Tipo de combustível utilizado no abastecimento. */
+    private FuelTypeSummary fuelType;
+
     /**
      * Resumo embutido da bomba e dos combustíveis associados.
      * <p>Desde a refatoração para ManyToMany, uma bomba pode ter múltiplos combustíveis.</p>

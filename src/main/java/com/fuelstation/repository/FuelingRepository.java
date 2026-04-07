@@ -27,12 +27,13 @@ public interface FuelingRepository extends JpaRepository<Fueling, Long> {
 
     /**
      * Lista todos os abastecimentos com join fetch para evitar N+1 queries
-     * ao serializar pump e fuelTypes (ManyToMany).
+     * ao serializar pump, fuelType e fuelTypes (ManyToMany).
      * Usa DISTINCT para evitar duplicatas quando faz JOIN em coleção.
      */
     @Query("""
             SELECT DISTINCT f FROM Fueling f
             JOIN FETCH f.pump p
+            JOIN FETCH f.fuelType ft
             LEFT JOIN FETCH p.fuelTypes
             ORDER BY f.fuelingDate DESC
             """)
@@ -47,6 +48,7 @@ public interface FuelingRepository extends JpaRepository<Fueling, Long> {
     @Query("""
             SELECT DISTINCT f FROM Fueling f
             JOIN FETCH f.pump p
+            JOIN FETCH f.fuelType ft
             LEFT JOIN FETCH p.fuelTypes
             WHERE f.id = :id
             """)
@@ -64,6 +66,7 @@ public interface FuelingRepository extends JpaRepository<Fueling, Long> {
     @Query("""
             SELECT DISTINCT f FROM Fueling f
             JOIN FETCH f.pump p
+            JOIN FETCH f.fuelType ft
             LEFT JOIN FETCH p.fuelTypes
             WHERE (:pumpId IS NULL OR p.id = :pumpId)
               AND (:startDate IS NULL OR f.fuelingDate >= :startDate)

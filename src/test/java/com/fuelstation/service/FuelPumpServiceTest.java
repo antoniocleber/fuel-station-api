@@ -138,7 +138,8 @@ class FuelPumpServiceTest {
         @DisplayName("deve lançar ResourceNotFoundException quando combustível não existe")
         void shouldThrowWhenFuelTypeNotFound() {
             given(fuelPumpRepository.existsByName("Bomba 01")).willReturn(false);
-            given(fuelTypeService.findEntityById(1L)).willReturn(gasolina);
+            // lenient: Set iteration order is non-deterministic, so this stub may or may not be called
+            lenient().doReturn(gasolina).when(fuelTypeService).findEntityById(1L);
             given(fuelTypeService.findEntityById(2L))
                     .willThrow(new ResourceNotFoundException("Tipo de Combustível", "id", 2L));
 
@@ -154,8 +155,9 @@ class FuelPumpServiceTest {
     class Update {
 
         @Test
-        @DisplayName("deve atualizar combustíveis de uma bomba")
-        void shouldUpdateFuelTypes() {
+        @DisplayName("deve adicionar novo combustível mantendo os existentes (merge)")
+        void shouldMergeFuelTypes() {
+            // Bomba tem [gasolina, etanol], request pede adicionar [gasolina] (já existe)
             FuelPumpRequest updateRequest = new FuelPumpRequest();
             updateRequest.setName("Bomba 01");
             updateRequest.setFuelTypeIds(Set.of(1L));
@@ -169,10 +171,34 @@ class FuelPumpServiceTest {
             FuelPumpResponse result = fuelPumpService.update(1L, updateRequest);
 
             assertThat(result.getName()).isEqualTo("Bomba 01");
-            then(fuelPumpRepository).should().findById(1L);
-            then(fuelPumpRepository).should().existsByNameAndIdNot("Bomba 01", 1L);
-            then(fuelTypeService).should().findEntityById(1L);
-            then(fuelPumpRepository).should().save(any(FuelPump.class));
+            // Deve manter os existentes e adicionar os novos (sem duplicatas)
+            assertThat(bomba1.getFuelTypes()).containsExactlyInAnyOrder(gasolina, etanol);
+        }
+
+        @Test
+        @DisplayName("deve adicionar tipo de combustível novo sem remover existentes")
+        void shouldAddNewFuelTypeWithoutRemovingExisting() {
+            // Bomba tem [gasolina, etanol], request pede adicionar diesel (novo)
+            FuelType diesel = FuelType.builder()
+                    .id(4L).name("Diesel S10")
+                    .pricePerLiter(new BigDecimal("6.490"))
+                    .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
+                    .build();
+
+            FuelPumpRequest updateRequest = new FuelPumpRequest();
+            updateRequest.setName("Bomba 01");
+            updateRequest.setFuelTypeIds(Set.of(4L));
+
+            given(fuelPumpRepository.findById(1L)).willReturn(Optional.of(bomba1));
+            given(fuelPumpRepository.existsByNameAndIdNot("Bomba 01", 1L)).willReturn(false);
+            given(fuelTypeService.findEntityById(4L)).willReturn(diesel);
+            given(fuelPumpRepository.save(bomba1)).willReturn(bomba1);
+            given(fuelPumpMapper.toResponse(bomba1)).willReturn(bomba1Response);
+
+            fuelPumpService.update(1L, updateRequest);
+
+            // Deve ter os 3: gasolina, etanol (existentes) + diesel (novo)
+            assertThat(bomba1.getFuelTypes()).containsExactlyInAnyOrder(gasolina, etanol, diesel);
         }
 
         @Test
