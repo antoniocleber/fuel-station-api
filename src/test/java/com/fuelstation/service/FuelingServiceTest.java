@@ -1,5 +1,6 @@
 package com.fuelstation.service;
 
+import com.fuelstation.exception.BusinessException;
 import com.fuelstation.exception.ResourceNotFoundException;
 import com.fuelstation.mapper.FuelingMapper;
 import com.fuelstation.model.dto.request.FuelingRequest;
@@ -37,6 +38,7 @@ class FuelingServiceTest {
 
     @Mock private FuelingRepository fuelingRepository;
     @Mock private FuelPumpService fuelPumpService;
+    @Mock private FuelTypeService fuelTypeService;
     @Mock private FuelingMapper fuelingMapper;
 
     @InjectMocks
@@ -67,6 +69,7 @@ class FuelingServiceTest {
         fueling1 = Fueling.builder()
                 .id(1L)
                 .pump(bomba1)
+                .fuelType(gasolina)
                 .fuelingDate(LocalDate.of(2025, 1, 10))
                 .liters(new BigDecimal("40.000"))
                 .totalValue(new BigDecimal("235.60"))
@@ -80,6 +83,7 @@ class FuelingServiceTest {
 
         fuelingRequest = new FuelingRequest();
         fuelingRequest.setPumpId(1L);
+        fuelingRequest.setFuelTypeId(1L);
         fuelingRequest.setFuelingDate(LocalDate.of(2025, 1, 10));
         fuelingRequest.setLiters(new BigDecimal("40.000"));
         fuelingRequest.setTotalValue(new BigDecimal("235.60"));
@@ -133,9 +137,10 @@ class FuelingServiceTest {
     class Create {
 
         @Test
-        @DisplayName("deve criar abastecimento com sucesso")
+        @DisplayName("deve criar abastecimento com liters e totalValue informados")
         void shouldCreateSuccessfully() {
             given(fuelPumpService.findEntityById(1L)).willReturn(bomba1);
+            given(fuelTypeService.findEntityById(1L)).willReturn(gasolina);
             given(fuelingMapper.toEntity(fuelingRequest)).willReturn(fueling1);
             given(fuelingRepository.save(fueling1)).willReturn(fueling1);
             given(fuelingRepository.findByIdWithDetails(1L)).willReturn(Optional.of(fueling1));
@@ -145,6 +150,97 @@ class FuelingServiceTest {
 
             assertThat(result).isNotNull();
             then(fuelingRepository).should().save(any(Fueling.class));
+        }
+
+        @Test
+        @DisplayName("deve calcular totalValue quando apenas liters informado")
+        void shouldCalculateTotalValueFromLiters() {
+            FuelingRequest req = new FuelingRequest();
+            req.setPumpId(1L);
+            req.setFuelTypeId(1L);
+            req.setFuelingDate(LocalDate.of(2025, 1, 10));
+            req.setLiters(new BigDecimal("40.000"));
+            req.setTotalValue(null); // apenas liters
+
+            given(fuelPumpService.findEntityById(1L)).willReturn(bomba1);
+            given(fuelTypeService.findEntityById(1L)).willReturn(gasolina);
+            given(fuelingMapper.toEntity(any(FuelingRequest.class))).willReturn(fueling1);
+            given(fuelingRepository.save(fueling1)).willReturn(fueling1);
+            given(fuelingRepository.findByIdWithDetails(1L)).willReturn(Optional.of(fueling1));
+            given(fuelingMapper.toResponse(fueling1)).willReturn(fuelingResponse1);
+
+            fuelingService.create(req);
+
+            // 40.000 × 5.890 = 235.60
+            assertThat(req.getTotalValue()).isEqualByComparingTo("235.60");
+        }
+
+        @Test
+        @DisplayName("deve calcular liters quando apenas totalValue informado")
+        void shouldCalculateLitersFromTotalValue() {
+            FuelingRequest req = new FuelingRequest();
+            req.setPumpId(1L);
+            req.setFuelTypeId(1L);
+            req.setFuelingDate(LocalDate.of(2025, 1, 10));
+            req.setLiters(null); // apenas totalValue
+            req.setTotalValue(new BigDecimal("235.60"));
+
+            given(fuelPumpService.findEntityById(1L)).willReturn(bomba1);
+            given(fuelTypeService.findEntityById(1L)).willReturn(gasolina);
+            given(fuelingMapper.toEntity(any(FuelingRequest.class))).willReturn(fueling1);
+            given(fuelingRepository.save(fueling1)).willReturn(fueling1);
+            given(fuelingRepository.findByIdWithDetails(1L)).willReturn(Optional.of(fueling1));
+            given(fuelingMapper.toResponse(fueling1)).willReturn(fuelingResponse1);
+
+            fuelingService.create(req);
+
+            // 235.60 / 5.890 = 40.000 (3 decimais)
+            assertThat(req.getLiters()).isEqualByComparingTo("40.000");
+        }
+
+        @Test
+        @DisplayName("deve lançar BusinessException quando liters e totalValue não informados")
+        void shouldThrowWhenNeitherLitersNorTotalValue() {
+            FuelingRequest req = new FuelingRequest();
+            req.setPumpId(1L);
+            req.setFuelTypeId(1L);
+            req.setFuelingDate(LocalDate.of(2025, 1, 10));
+            req.setLiters(null);
+            req.setTotalValue(null);
+
+            given(fuelPumpService.findEntityById(1L)).willReturn(bomba1);
+            given(fuelTypeService.findEntityById(1L)).willReturn(gasolina);
+
+            assertThatThrownBy(() -> fuelingService.create(req))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("litros ou o valor total");
+
+            then(fuelingRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("deve lançar BusinessException quando fuelType não pertence à bomba")
+        void shouldThrowWhenFuelTypeNotInPump() {
+            FuelType diesel = FuelType.builder()
+                    .id(4L).name("Diesel S10")
+                    .pricePerLiter(new BigDecimal("6.490"))
+                    .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
+                    .build();
+
+            FuelingRequest req = new FuelingRequest();
+            req.setPumpId(1L);
+            req.setFuelTypeId(4L);
+            req.setFuelingDate(LocalDate.of(2025, 1, 10));
+            req.setLiters(new BigDecimal("40.000"));
+
+            given(fuelPumpService.findEntityById(1L)).willReturn(bomba1);
+            given(fuelTypeService.findEntityById(4L)).willReturn(diesel);
+
+            assertThatThrownBy(() -> fuelingService.create(req))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("não está associado à bomba");
+
+            then(fuelingRepository).should(never()).save(any());
         }
 
         @Test

@@ -52,6 +52,7 @@ class FuelingControllerTest {
 
         fuelingRequest = new FuelingRequest();
         fuelingRequest.setPumpId(1L);
+        fuelingRequest.setFuelTypeId(1L);
         fuelingRequest.setFuelingDate(LocalDate.of(2025, 1, 10));
         fuelingRequest.setLiters(new BigDecimal("40.000"));
         fuelingRequest.setTotalValue(new BigDecimal("235.60"));

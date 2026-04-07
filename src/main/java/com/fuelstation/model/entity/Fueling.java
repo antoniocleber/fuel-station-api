@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 /**
  * Entidade que representa um registro de abastecimento.
  *
- * <p>Contém a bomba utilizada, data, volume em litros e valor total cobrado.</p>
+ * <p>Contém a bomba utilizada, o tipo de combustível, data, volume em litros e valor total cobrado.</p>
  */
 @Entity
 @Table(name = "fueling")
@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@ToString(exclude = "pump")
+@ToString(exclude = {"pump", "fuelType"})
 public class Fueling {
 
     @Id
@@ -35,6 +35,14 @@ public class Fueling {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "pump_id", nullable = false)
     private FuelPump pump;
+
+    /**
+     * Tipo de combustível utilizado no abastecimento.
+     * LAZY para evitar JOIN desnecessário na maioria das consultas.
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "fuel_type_id", nullable = false)
+    private FuelType fuelType;
 
     /** Data em que o abastecimento ocorreu. */
     @Column(name = "fueling_date", nullable = false)
