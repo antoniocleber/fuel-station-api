@@ -6,6 +6,7 @@ import com.fuelstation.exception.ResourceNotFoundException;
 import com.fuelstation.mapper.FuelTypeMapper;
 import com.fuelstation.model.dto.request.FuelTypeRequest;
 import com.fuelstation.model.dto.response.FuelTypeResponse;
+import com.fuelstation.model.dto.response.PageResponse;
 import com.fuelstation.model.entity.FuelType;
 import com.fuelstation.repository.FuelPumpRepository;
 import com.fuelstation.repository.FuelTypeRepository;
@@ -17,6 +18,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -77,29 +81,30 @@ class FuelTypeServiceTest {
     // ── findAll ────────────────────────────────────────────────────────────────
 
     @Nested
-    @DisplayName("findAll()")
+    @DisplayName("findAll(Pageable)")
     class FindAll {
 
         @Test
         @DisplayName("deve retornar lista de combustíveis com sucesso")
         void shouldReturnListSuccessfully() {
-            given(fuelTypeRepository.findAll()).willReturn(List.of(gasolina));
-            given(fuelTypeMapper.toResponseList(List.of(gasolina))).willReturn(List.of(gasolinaResponse));
+            Pageable pageable = PageRequest.of(0, 20);
+            given(fuelTypeRepository.findAll(pageable)).willReturn(new PageImpl<>(List.of(gasolina), pageable, 1));
+            given(fuelTypeMapper.toResponse(gasolina)).willReturn(gasolinaResponse);
 
-            List<FuelTypeResponse> result = fuelTypeService.findAll();
+            PageResponse<FuelTypeResponse> result = fuelTypeService.findAll(pageable);
 
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getName()).isEqualTo("Gasolina Comum");
-            then(fuelTypeRepository).should().findAll();
+            assertThat(result.content()).hasSize(1);
+            assertThat(result.content().get(0).getName()).isEqualTo("Gasolina Comum");
+            then(fuelTypeRepository).should().findAll(pageable);
         }
 
         @Test
         @DisplayName("deve retornar lista vazia quando não há combustíveis")
         void shouldReturnEmptyList() {
-            given(fuelTypeRepository.findAll()).willReturn(List.of());
-            given(fuelTypeMapper.toResponseList(List.of())).willReturn(List.of());
+            Pageable pageable = PageRequest.of(0, 20);
+            given(fuelTypeRepository.findAll(pageable)).willReturn(new PageImpl<>(List.of(), pageable, 0));
 
-            assertThat(fuelTypeService.findAll()).isEmpty();
+            assertThat(fuelTypeService.findAll(pageable).content()).isEmpty();
         }
     }
 

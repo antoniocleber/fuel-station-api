@@ -1,12 +1,15 @@
 package com.fuelstation.repository;
 
 import com.fuelstation.model.entity.Fueling;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,6 +41,9 @@ public interface FuelingRepository extends JpaRepository<Fueling, Long> {
             ORDER BY f.fuelingDate DESC
             """)
     List<Fueling> findAllWithDetails();
+
+    @Query("SELECT f.id FROM Fueling f")
+    Page<Long> findPageIds(Pageable pageable);
 
     /**
      * Busca abastecimento por ID com todos os relacionamentos carregados.
@@ -78,4 +84,26 @@ public interface FuelingRepository extends JpaRepository<Fueling, Long> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    @Query("""
+            SELECT f.id FROM Fueling f
+            WHERE (:pumpId IS NULL OR f.pump.id = :pumpId)
+              AND (:startDate IS NULL OR f.fuelingDate >= :startDate)
+              AND (:endDate IS NULL OR f.fuelingDate <= :endDate)
+            """)
+    Page<Long> findPageIdsWithFilters(
+            @Param("pumpId") Long pumpId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT DISTINCT f FROM Fueling f
+            JOIN FETCH f.pump p
+            JOIN FETCH f.fuelType ft
+            LEFT JOIN FETCH p.fuelTypes
+            WHERE f.id IN :ids
+            """)
+    List<Fueling> findAllByIdInWithDetails(@Param("ids") Collection<Long> ids);
 }

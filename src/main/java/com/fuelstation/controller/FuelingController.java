@@ -3,6 +3,7 @@ package com.fuelstation.controller;
 import com.fuelstation.model.dto.request.FuelingRequest;
 import com.fuelstation.model.dto.response.ApiErrorResponse;
 import com.fuelstation.model.dto.response.FuelingResponse;
+import com.fuelstation.model.dto.response.PageResponse;
 import com.fuelstation.service.FuelingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -13,13 +14,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
 
 /**
  * Controller REST para operações de Abastecimentos.
@@ -43,9 +47,10 @@ public class FuelingController {
      * @param endDate   data final do período (opcional, formato yyyy-MM-dd)
      */
     @GetMapping
-    @Operation(summary = "Lista abastecimentos (com filtros opcionais de bomba e período)")
+    @Operation(summary = "Lista abastecimentos paginados (com filtros opcionais)",
+            description = "Filtros: pumpId, startDate, endDate. Paginação: page (default 0), size (default 20), sort (default fuelingDate,desc)")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
-    public ResponseEntity<List<FuelingResponse>> findAll(
+    public ResponseEntity<PageResponse<FuelingResponse>> findAll(
             @Parameter(description = "ID da bomba para filtrar")
             @RequestParam(required = false) Long pumpId,
 
@@ -55,12 +60,16 @@ public class FuelingController {
 
             @Parameter(description = "Data final do período (yyyy-MM-dd)")
             @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+
+            @ParameterObject
+            @PageableDefault(size = 20, sort = "fuelingDate", direction = Sort.Direction.DESC)
+            Pageable pageable) {
 
         if (pumpId != null || startDate != null || endDate != null) {
-            return ResponseEntity.ok(fuelingService.findWithFilters(pumpId, startDate, endDate));
+            return ResponseEntity.ok(fuelingService.findWithFilters(pumpId, startDate, endDate, pageable));
         }
-        return ResponseEntity.ok(fuelingService.findAll());
+        return ResponseEntity.ok(fuelingService.findAll(pageable));
     }
 
     @GetMapping("/{id}")

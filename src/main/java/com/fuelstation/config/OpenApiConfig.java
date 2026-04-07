@@ -33,6 +33,10 @@ public class OpenApiConfig {
                                 - **Bombas de Combustível** — Bombas associadas a um tipo de combustível.
                                 - **Abastecimentos** — Registros de abastecimento por bomba, data e volume.
                                 
+                                ## Paginação
+                                - Endpoints de listagem retornam **PageResponse**.
+                                - Query params padrão: `page`, `size`, `sort`.
+                                
                                 ## Documentação técnica
                                 - JSON Schema: [/api-docs](/api-docs)
                                 """)

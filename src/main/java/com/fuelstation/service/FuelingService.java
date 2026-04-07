@@ -5,19 +5,26 @@ import com.fuelstation.exception.ResourceNotFoundException;
 import com.fuelstation.mapper.FuelingMapper;
 import com.fuelstation.model.dto.request.FuelingRequest;
 import com.fuelstation.model.dto.response.FuelingResponse;
+import com.fuelstation.model.dto.response.PageResponse;
 import com.fuelstation.model.entity.Fueling;
 import com.fuelstation.model.entity.FuelPump;
 import com.fuelstation.model.entity.FuelType;
 import com.fuelstation.repository.FuelingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Serviço com as regras de negócio para {@link Fueling} (Abastecimentos).
@@ -44,9 +51,10 @@ public class FuelingService {
      * Retorna todos os abastecimentos com detalhes de bomba e combustível.
      */
     @Transactional(readOnly = true)
-    public List<FuelingResponse> findAll() {
-        log.debug("Buscando todos os abastecimentos");
-        return fuelingMapper.toResponseList(fuelingRepository.findAllWithDetails());
+    public PageResponse<FuelingResponse> findAll(Pageable pageable) {
+        log.debug("Buscando abastecimentos paginados: page={}, size={}",
+                pageable.getPageNumber(), pageable.getPageSize());
+        return getPageResponse(fuelingRepository.findPageIds(pageable), pageable);
     }
 
     /**
@@ -73,10 +81,15 @@ public class FuelingService {
      * @return lista filtrada de DTOs
      */
     @Transactional(readOnly = true)
-    public List<FuelingResponse> findWithFilters(Long pumpId, LocalDate startDate, LocalDate endDate) {
+    public PageResponse<FuelingResponse> findWithFilters(
+            Long pumpId,
+            LocalDate startDate,
+            LocalDate endDate,
+            Pageable pageable) {
         log.debug("Filtrando abastecimentos: pumpId={}, startDate={}, endDate={}", pumpId, startDate, endDate);
-        return fuelingMapper.toResponseList(
-                fuelingRepository.findWithFilters(pumpId, startDate, endDate)
+        return getPageResponse(
+                fuelingRepository.findPageIdsWithFilters(pumpId, startDate, endDate, pageable),
+                pageable
         );
     }
 
@@ -221,5 +234,26 @@ public class FuelingService {
             log.debug("Litros calculados: {} (totalValue={} / price={})",
                     calculatedLiters, request.getTotalValue(), pricePerLiter);
         }
+    }
+
+    private PageResponse<FuelingResponse> getPageResponse(Page<Long> idPage, Pageable pageable) {
+        if (idPage.isEmpty()) {
+            return PageResponse.from(Page.empty(pageable));
+        }
+
+        List<Long> orderedIds = idPage.getContent();
+        Map<Long, Integer> idOrder = toOrderMap(orderedIds);
+
+        List<FuelingResponse> content = fuelingRepository.findAllByIdInWithDetails(orderedIds).stream()
+                .sorted(Comparator.comparingInt(fueling -> idOrder.getOrDefault(fueling.getId(), Integer.MAX_VALUE)))
+                .map(fuelingMapper::toResponse)
+                .toList();
+
+        return PageResponse.from(new PageImpl<>(content, pageable, idPage.getTotalElements()));
+    }
+
+    private Map<Long, Integer> toOrderMap(List<Long> orderedIds) {
+        return orderedIds.stream()
+                .collect(Collectors.toMap(id -> id, orderedIds::indexOf));
     }
 }

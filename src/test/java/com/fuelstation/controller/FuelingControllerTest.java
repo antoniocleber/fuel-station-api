@@ -4,13 +4,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fuelstation.exception.ResourceNotFoundException;
 import com.fuelstation.model.dto.request.FuelingRequest;
 import com.fuelstation.model.dto.response.FuelingResponse;
+import com.fuelstation.model.dto.response.PageResponse;
 import com.fuelstation.service.FuelingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,6 +23,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -65,19 +70,20 @@ class FuelingControllerTest {
         @Test
         @DisplayName("deve retornar 200 com lista de abastecimentos")
         void shouldReturn200() throws Exception {
-            given(fuelingService.findAll()).willReturn(List.of(fuelingResponse));
+            given(fuelingService.findAll(any(Pageable.class)))
+                    .willReturn(new PageResponse<>(List.of(fuelingResponse), 0, 20, 1, 1, true, true));
 
             mockMvc.perform(get(BASE_URL).accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.length()").value(1))
-                    .andExpect(jsonPath("$[0].liters").value(40.000));
+                    .andExpect(jsonPath("$.content.length()").value(1))
+                    .andExpect(jsonPath("$.content[0].liters").value(40.000));
         }
 
         @Test
         @DisplayName("deve usar filtros quando parâmetros são fornecidos")
         void shouldUseFiltersWhenParamsProvided() throws Exception {
-            given(fuelingService.findWithFilters(any(), any(), any()))
-                    .willReturn(List.of(fuelingResponse));
+            given(fuelingService.findWithFilters(any(), any(), any(), any(Pageable.class)))
+                    .willReturn(new PageResponse<>(List.of(fuelingResponse), 0, 20, 1, 1, true, true));
 
             mockMvc.perform(get(BASE_URL)
                             .param("pumpId", "1")
@@ -85,10 +91,62 @@ class FuelingControllerTest {
                             .param("endDate", "2025-01-31")
                             .accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.length()").value(1));
+                    .andExpect(jsonPath("$.content.length()").value(1));
 
-            then(fuelingService).should().findWithFilters(any(), any(), any());
-            then(fuelingService).should(never()).findAll();
+            then(fuelingService).should().findWithFilters(any(), any(), any(), any(Pageable.class));
+            then(fuelingService).should(never()).findAll(any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("deve repassar paginação para listagem sem filtros")
+        void shouldForwardPaginationWithoutFilters() throws Exception {
+            given(fuelingService.findAll(any(Pageable.class)))
+                    .willReturn(new PageResponse<>(List.of(fuelingResponse), 1, 3, 7, 3, false, false));
+
+            mockMvc.perform(get(BASE_URL)
+                            .param("page", "1")
+                            .param("size", "3")
+                            .param("sort", "fuelingDate,asc")
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.page").value(1))
+                    .andExpect(jsonPath("$.size").value(3));
+
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            then(fuelingService).should().findAll(pageableCaptor.capture());
+
+            Pageable pageable = pageableCaptor.getValue();
+            assertThat(pageable.getPageNumber()).isEqualTo(1);
+            assertThat(pageable.getPageSize()).isEqualTo(3);
+            assertThat(pageable.getSort().getOrderFor("fuelingDate")).isNotNull();
+            assertThat(pageable.getSort().getOrderFor("fuelingDate").getDirection()).isEqualTo(Sort.Direction.ASC);
+        }
+
+        @Test
+        @DisplayName("deve repassar paginação para listagem com filtros")
+        void shouldForwardPaginationWithFilters() throws Exception {
+            given(fuelingService.findWithFilters(any(), any(), any(), any(Pageable.class)))
+                    .willReturn(new PageResponse<>(List.of(fuelingResponse), 0, 2, 1, 1, true, true));
+
+            mockMvc.perform(get(BASE_URL)
+                            .param("pumpId", "1")
+                            .param("startDate", "2025-01-01")
+                            .param("endDate", "2025-01-31")
+                            .param("page", "0")
+                            .param("size", "2")
+                            .param("sort", "fuelingDate,desc")
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.size").value(2));
+
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            then(fuelingService).should().findWithFilters(any(), any(), any(), pageableCaptor.capture());
+
+            Pageable pageable = pageableCaptor.getValue();
+            assertThat(pageable.getPageNumber()).isEqualTo(0);
+            assertThat(pageable.getPageSize()).isEqualTo(2);
+            assertThat(pageable.getSort().getOrderFor("fuelingDate")).isNotNull();
+            assertThat(pageable.getSort().getOrderFor("fuelingDate").getDirection()).isEqualTo(Sort.Direction.DESC);
         }
     }
 

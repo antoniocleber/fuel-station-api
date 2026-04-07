@@ -6,6 +6,7 @@ import com.fuelstation.exception.ResourceNotFoundException;
 import com.fuelstation.mapper.FuelPumpMapper;
 import com.fuelstation.model.dto.request.FuelPumpRequest;
 import com.fuelstation.model.dto.response.FuelPumpResponse;
+import com.fuelstation.model.dto.response.PageResponse;
 import com.fuelstation.model.entity.FuelPump;
 import com.fuelstation.model.entity.FuelType;
 import com.fuelstation.repository.FuelPumpRepository;
@@ -18,6 +19,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -220,19 +224,21 @@ class FuelPumpServiceTest {
     }
 
     @Nested
-    @DisplayName("findAll()")
+    @DisplayName("findAll(Pageable)")
     class FindAll {
 
         @Test
         @DisplayName("deve retornar todas as bombas com combustíveis")
         void shouldReturnAllPumps() {
-            given(fuelPumpRepository.findAllWithFuelType()).willReturn(List.of(bomba1));
-            given(fuelPumpMapper.toResponseList(List.of(bomba1))).willReturn(List.of(bomba1Response));
+            Pageable pageable = PageRequest.of(0, 20);
+            given(fuelPumpRepository.findPageIds(pageable)).willReturn(new PageImpl<>(List.of(1L), pageable, 1));
+            given(fuelPumpRepository.findAllByIdInWithFuelTypes(List.of(1L))).willReturn(List.of(bomba1));
+            given(fuelPumpMapper.toResponse(bomba1)).willReturn(bomba1Response);
 
-            List<FuelPumpResponse> result = fuelPumpService.findAll();
+            PageResponse<FuelPumpResponse> result = fuelPumpService.findAll(pageable);
 
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getName()).isEqualTo("Bomba 01");
+            assertThat(result.content()).hasSize(1);
+            assertThat(result.content().get(0).getName()).isEqualTo("Bomba 01");
         }
     }
 

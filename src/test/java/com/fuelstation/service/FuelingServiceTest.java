@@ -5,6 +5,7 @@ import com.fuelstation.exception.ResourceNotFoundException;
 import com.fuelstation.mapper.FuelingMapper;
 import com.fuelstation.model.dto.request.FuelingRequest;
 import com.fuelstation.model.dto.response.FuelingResponse;
+import com.fuelstation.model.dto.response.PageResponse;
 import com.fuelstation.model.entity.Fueling;
 import com.fuelstation.model.entity.FuelPump;
 import com.fuelstation.model.entity.FuelType;
@@ -17,6 +18,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -90,19 +94,21 @@ class FuelingServiceTest {
     }
 
     @Nested
-    @DisplayName("findAll()")
+    @DisplayName("findAll(Pageable)")
     class FindAll {
 
         @Test
         @DisplayName("deve retornar lista de abastecimentos")
         void shouldReturnList() {
-            given(fuelingRepository.findAllWithDetails()).willReturn(List.of(fueling1));
-            given(fuelingMapper.toResponseList(List.of(fueling1))).willReturn(List.of(fuelingResponse1));
+            Pageable pageable = PageRequest.of(0, 20);
+            given(fuelingRepository.findPageIds(pageable)).willReturn(new PageImpl<>(List.of(1L), pageable, 1));
+            given(fuelingRepository.findAllByIdInWithDetails(List.of(1L))).willReturn(List.of(fueling1));
+            given(fuelingMapper.toResponse(fueling1)).willReturn(fuelingResponse1);
 
-            List<FuelingResponse> result = fuelingService.findAll();
+            PageResponse<FuelingResponse> result = fuelingService.findAll(pageable);
 
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getLiters()).isEqualByComparingTo("40.000");
+            assertThat(result.content()).hasSize(1);
+            assertThat(result.content().get(0).getLiters()).isEqualByComparingTo("40.000");
         }
     }
 
@@ -281,7 +287,7 @@ class FuelingServiceTest {
     }
 
     @Nested
-    @DisplayName("findWithFilters()")
+    @DisplayName("findWithFilters(..., Pageable)")
     class FindWithFilters {
 
         @Test
@@ -289,12 +295,15 @@ class FuelingServiceTest {
         void shouldFilterByPumpAndPeriod() {
             LocalDate start = LocalDate.of(2025, 1, 1);
             LocalDate end = LocalDate.of(2025, 1, 31);
-            given(fuelingRepository.findWithFilters(1L, start, end)).willReturn(List.of(fueling1));
-            given(fuelingMapper.toResponseList(List.of(fueling1))).willReturn(List.of(fuelingResponse1));
+            Pageable pageable = PageRequest.of(0, 20);
+            given(fuelingRepository.findPageIdsWithFilters(1L, start, end, pageable))
+                    .willReturn(new PageImpl<>(List.of(1L), pageable, 1));
+            given(fuelingRepository.findAllByIdInWithDetails(List.of(1L))).willReturn(List.of(fueling1));
+            given(fuelingMapper.toResponse(fueling1)).willReturn(fuelingResponse1);
 
-            List<FuelingResponse> result = fuelingService.findWithFilters(1L, start, end);
+            PageResponse<FuelingResponse> result = fuelingService.findWithFilters(1L, start, end, pageable);
 
-            assertThat(result).hasSize(1);
+            assertThat(result.content()).hasSize(1);
         }
     }
 }

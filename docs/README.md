@@ -182,7 +182,7 @@ Após subir a aplicação, acesse:
 
 | Método | Endpoint | Descrição |
 |---|---|---|
-| `GET` | `/api/v1/fuel-types` | Lista todos |
+| `GET` | `/api/v1/fuel-types` | Lista paginada (`page`, `size`, `sort`) |
 | `GET` | `/api/v1/fuel-types/{id}` | Busca por ID |
 | `POST` | `/api/v1/fuel-types` | Cria novo |
 | `PUT` | `/api/v1/fuel-types/{id}` | Atualiza |
@@ -192,7 +192,7 @@ Após subir a aplicação, acesse:
 
 | Método | Endpoint | Descrição |
 |---|---|---|
-| `GET` | `/api/v1/fuel-pumps` | Lista todas com combustível |
+| `GET` | `/api/v1/fuel-pumps` | Lista paginada com combustíveis (`page`, `size`, `sort`) |
 | `GET` | `/api/v1/fuel-pumps/{id}` | Busca por ID |
 | `POST` | `/api/v1/fuel-pumps` | Cria nova |
 | `PUT` | `/api/v1/fuel-pumps/{id}` | Atualiza |
@@ -202,12 +202,26 @@ Após subir a aplicação, acesse:
 
 | Método | Endpoint | Descrição |
 |---|---|---|
-| `GET` | `/api/v1/fuelings` | Lista todos (filtros opcionais) |
-| `GET` | `/api/v1/fuelings?pumpId=1&startDate=2025-01-01&endDate=2025-01-31` | Filtra por bomba e período |
+| `GET` | `/api/v1/fuelings` | Lista paginada (filtros opcionais + `page`, `size`, `sort`) |
+| `GET` | `/api/v1/fuelings?pumpId=1&startDate=2025-01-01&endDate=2025-01-31&page=0&size=20&sort=fuelingDate,desc` | Filtra e pagina |
 | `GET` | `/api/v1/fuelings/{id}` | Busca por ID |
 | `POST` | `/api/v1/fuelings` | Registra abastecimento |
 | `PUT` | `/api/v1/fuelings/{id}` | Atualiza |
 | `DELETE` | `/api/v1/fuelings/{id}` | Remove |
+
+### Formato de resposta de listagem (PageResponse)
+
+```json
+{
+  "content": [],
+  "page": 0,
+  "size": 20,
+  "totalElements": 0,
+  "totalPages": 0,
+  "first": true,
+  "last": true
+}
+```
 
 ---
 
@@ -226,7 +240,7 @@ curl -X POST http://localhost:8080/api/v1/fuel-types \
 ```bash
 curl -X POST http://localhost:8080/api/v1/fuel-pumps \
   -H "Content-Type: application/json" \
-  -d '{"name": "Bomba 06 - Premium", "fuelTypeId": 1}'
+  -d '{"name": "Bomba 06 - Premium", "fuelTypeIds": [1]}'
 ```
 
 ### Registrar um abastecimento
@@ -236,6 +250,7 @@ curl -X POST http://localhost:8080/api/v1/fuelings \
   -H "Content-Type: application/json" \
   -d '{
     "pumpId": 1,
+    "fuelTypeId": 1,
     "fuelingDate": "2025-03-25",
     "liters": 35.500,
     "totalValue": 209.22
@@ -245,7 +260,7 @@ curl -X POST http://localhost:8080/api/v1/fuelings \
 ### Filtrar abastecimentos por período
 
 ```bash
-curl "http://localhost:8080/api/v1/fuelings?startDate=2025-01-01&endDate=2025-01-31"
+curl "http://localhost:8080/api/v1/fuelings?startDate=2025-01-01&endDate=2025-01-31&page=0&size=20&sort=fuelingDate,desc"
 ```
 
 ---

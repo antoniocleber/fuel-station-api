@@ -3,6 +3,7 @@ package com.fuelstation.controller;
 import com.fuelstation.model.dto.request.FuelTypeRequest;
 import com.fuelstation.model.dto.response.ApiErrorResponse;
 import com.fuelstation.model.dto.response.FuelTypeResponse;
+import com.fuelstation.model.dto.response.PageResponse;
 import com.fuelstation.service.FuelTypeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -12,11 +13,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * Controller REST para operações de Tipos de Combustível.
@@ -33,10 +36,13 @@ public class FuelTypeController {
 
     // ── GET /api/v1/fuel-types ────────────────────────────────────────────────
     @GetMapping
-    @Operation(summary = "Lista todos os tipos de combustível")
+    @Operation(summary = "Lista tipos de combustível paginados",
+            description = "Parâmetros de paginação: page (default 0), size (default 20), sort (default name,asc)")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
-    public ResponseEntity<List<FuelTypeResponse>> findAll() {
-        return ResponseEntity.ok(fuelTypeService.findAll());
+    public ResponseEntity<PageResponse<FuelTypeResponse>> findAll(
+            @ParameterObject
+            @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
+        return ResponseEntity.ok(fuelTypeService.findAll(pageable));
     }
 
     // ── GET /api/v1/fuel-types/{id} ───────────────────────────────────────────

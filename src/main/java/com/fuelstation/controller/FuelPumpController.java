@@ -3,6 +3,7 @@ package com.fuelstation.controller;
 import com.fuelstation.model.dto.request.FuelPumpRequest;
 import com.fuelstation.model.dto.response.ApiErrorResponse;
 import com.fuelstation.model.dto.response.FuelPumpResponse;
+import com.fuelstation.model.dto.response.PageResponse;
 import com.fuelstation.service.FuelPumpService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -12,11 +13,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * Controller REST para operações de Bombas de Combustível.
@@ -33,10 +36,13 @@ public class FuelPumpController {
     private final FuelPumpService fuelPumpService;
 
     @GetMapping
-    @Operation(summary = "Lista todas as bombas com seus tipos de combustível")
+    @Operation(summary = "Lista bombas paginadas com seus tipos de combustível",
+            description = "Parâmetros de paginação: page (default 0), size (default 20), sort (default name,asc)")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
-    public ResponseEntity<List<FuelPumpResponse>> findAll() {
-        return ResponseEntity.ok(fuelPumpService.findAll());
+    public ResponseEntity<PageResponse<FuelPumpResponse>> findAll(
+            @ParameterObject
+            @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
+        return ResponseEntity.ok(fuelPumpService.findAll(pageable));
     }
 
     @GetMapping("/{id}")

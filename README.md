@@ -93,6 +93,39 @@ Toda documentação está organizada na pasta `docs/`:
 
 ---
 
+## 📄 Paginação nas Listagens
+
+As listagens de `fuel-types`, `fuel-pumps` e `fuelings` agora retornam `PageResponse`.
+
+### Query params suportados
+- `page` (default `0`)
+- `size` (default `20`)
+- `sort` (ex.: `sort=name,asc` ou `sort=fuelingDate,desc`)
+
+### Exemplos
+
+```bash
+GET /api/v1/fuel-types?page=0&size=10&sort=name,asc
+GET /api/v1/fuel-pumps?page=1&size=5&sort=name,desc
+GET /api/v1/fuelings?pumpId=1&startDate=2025-01-01&endDate=2025-01-31&page=0&size=20&sort=fuelingDate,desc
+```
+
+### Envelope de resposta
+
+```json
+{
+  "content": [],
+  "page": 0,
+  "size": 20,
+  "totalElements": 0,
+  "totalPages": 0,
+  "first": true,
+  "last": true
+}
+```
+
+---
+
 ## 🔄 Refatoração ManyToMany
 
 Este projeto demonstra uma **refatoração completa** de relacionamento JPA:

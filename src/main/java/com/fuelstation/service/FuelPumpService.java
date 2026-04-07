@@ -6,18 +6,25 @@ import com.fuelstation.exception.ResourceNotFoundException;
 import com.fuelstation.mapper.FuelPumpMapper;
 import com.fuelstation.model.dto.request.FuelPumpRequest;
 import com.fuelstation.model.dto.response.FuelPumpResponse;
+import com.fuelstation.model.dto.response.PageResponse;
 import com.fuelstation.model.entity.FuelPump;
 import com.fuelstation.model.entity.FuelType;
 import com.fuelstation.repository.FuelPumpRepository;
 import com.fuelstation.repository.FuelingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Serviço com as regras de negócio para {@link FuelPump}.
@@ -42,9 +49,24 @@ public class FuelPumpService {
      * Retorna todas as bombas com seus combustíveis associados.
      */
     @Transactional(readOnly = true)
-    public List<FuelPumpResponse> findAll() {
-        log.debug("Buscando todas as bombas de combustível");
-        return fuelPumpMapper.toResponseList(fuelPumpRepository.findAllWithFuelType());
+    public PageResponse<FuelPumpResponse> findAll(Pageable pageable) {
+        log.debug("Buscando bombas paginadas: page={}, size={}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<Long> idPage = fuelPumpRepository.findPageIds(pageable);
+        if (idPage.isEmpty()) {
+            return PageResponse.from(Page.empty(pageable));
+        }
+
+        List<Long> orderedIds = idPage.getContent();
+        Map<Long, Integer> idOrder = toOrderMap(orderedIds);
+
+        List<FuelPumpResponse> content = fuelPumpRepository.findAllByIdInWithFuelTypes(orderedIds).stream()
+                .sorted(Comparator.comparingInt(pump -> idOrder.getOrDefault(pump.getId(), Integer.MAX_VALUE)))
+                .map(fuelPumpMapper::toResponse)
+                .toList();
+
+        return PageResponse.from(new PageImpl<>(content, pageable, idPage.getTotalElements()));
     }
 
     /**
@@ -191,6 +213,11 @@ public class FuelPumpService {
             fuelTypes.add(fuelType);
         }
         return fuelTypes;
+    }
+
+    private Map<Long, Integer> toOrderMap(List<Long> orderedIds) {
+        return orderedIds.stream()
+                .collect(Collectors.toMap(id -> id, orderedIds::indexOf));
     }
 }
 

@@ -17,7 +17,6 @@ spring:
     open-in-view: false           # Boa prática: desabilitar OSIV para evitar N+1 lazy
     properties:
       hibernate:
-        format_sql: true
         dialect: org.hibernate.dialect.H2Dialect
 
   # ── Flyway: Migrations ────────────────────────────────────────────────────────
@@ -72,10 +71,8 @@ springdoc:
 # Configurado via CorsConfig.java (com.fuelstation.config)
 # Origens permitidas: http://localhost:5173 (frontend)
 
-# ── Logging ───────────────────────────────────────────────────────────────────────
+# ── Logging ───────────────────────────────────────────────────────────────────
 logging:
   level:
-    com.fuelstation: DEBUG
-    org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql: TRACE
+    root: WARN
+    com.fuelstation: INFO

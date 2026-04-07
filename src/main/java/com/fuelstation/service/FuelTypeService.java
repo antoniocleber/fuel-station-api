@@ -6,15 +6,16 @@ import com.fuelstation.exception.ResourceNotFoundException;
 import com.fuelstation.mapper.FuelTypeMapper;
 import com.fuelstation.model.dto.request.FuelTypeRequest;
 import com.fuelstation.model.dto.response.FuelTypeResponse;
+import com.fuelstation.model.dto.response.PageResponse;
 import com.fuelstation.model.entity.FuelType;
 import com.fuelstation.repository.FuelPumpRepository;
 import com.fuelstation.repository.FuelTypeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 /**
  * Serviço com as regras de negócio para {@link FuelType}.
@@ -41,9 +42,12 @@ public class FuelTypeService {
      * @return lista de DTOs de resposta
      */
     @Transactional(readOnly = true)
-    public List<FuelTypeResponse> findAll() {
-        log.debug("Buscando todos os tipos de combustível");
-        return fuelTypeMapper.toResponseList(fuelTypeRepository.findAll());
+    public PageResponse<FuelTypeResponse> findAll(Pageable pageable) {
+        log.debug("Buscando tipos de combustível paginados: page={}, size={}",
+                pageable.getPageNumber(), pageable.getPageSize());
+        Page<FuelTypeResponse> page = fuelTypeRepository.findAll(pageable)
+                .map(fuelTypeMapper::toResponse);
+        return PageResponse.from(page);
     }
 
     /**

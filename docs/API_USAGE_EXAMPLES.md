@@ -84,46 +84,53 @@ Content-Type: application/json
 ### Requisição GET
 
 ```bash
-GET http://localhost:8080/api/v1/fuel-pumps
+GET http://localhost:8080/api/v1/fuel-pumps?page=0&size=20&sort=name,asc
 ```
 
 ### Resposta (200 OK)
 
 ```json
-[
-  {
-    "id": 1,
-    "name": "Bomba A1",
-    "fuelTypes": [
-      {
-        "id": 1,
-        "name": "Gasolina Comum",
-        "pricePerLiter": 5.890
-      },
-      {
-        "id": 2,
-        "name": "Etanol",
-        "pricePerLiter": 4.290
-      }
-    ],
-    "createdAt": "2024-03-28T10:30:00",
-    "updatedAt": "2024-03-28T10:30:00"
-  },
-  {
-    "id": 2,
-    "name": "Bomba B2",
-    "fuelTypes": [
-      {
-        "id": 3,
-        "name": "Diesel S10",
-        "pricePerLiter": 6.150
-      }
-    ],
-    "createdAt": "2024-03-28T10:35:00",
-    "updatedAt": "2024-03-28T10:35:00"
-  }
-]
+{
+  "content": [
+    {
+      "id": 1,
+      "name": "Bomba A1",
+      "fuelTypes": [
+        {
+          "id": 1,
+          "name": "Gasolina Comum",
+          "pricePerLiter": 5.890
+        },
+        {
+          "id": 2,
+          "name": "Etanol",
+          "pricePerLiter": 4.290
+        }
+      ],
+      "createdAt": "2024-03-28T10:30:00",
+      "updatedAt": "2024-03-28T10:30:00"
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 2,
+  "totalPages": 1,
+  "first": true,
+  "last": true
+}
 ```
+
+## Paginação em Tipos de Combustível e Abastecimentos
+
+```bash
+GET http://localhost:8080/api/v1/fuel-types?page=0&size=10&sort=name,asc
+GET http://localhost:8080/api/v1/fuelings?pumpId=1&startDate=2024-03-01&endDate=2024-03-31&page=0&size=20&sort=fuelingDate,desc
+```
+
+Parâmetros de paginação:
+- `page`: índice da página (base 0)
+- `size`: quantidade de itens por página
+- `sort`: campo e direção (`campo,asc` ou `campo,desc`)
 
 ## Validações e Erros
 

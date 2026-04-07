@@ -1,11 +1,14 @@
 package com.fuelstation.repository;
 
 import com.fuelstation.model.entity.FuelPump;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -45,6 +48,12 @@ public interface FuelPumpRepository extends JpaRepository<FuelPump, Long> {
      */
     @Query("SELECT DISTINCT p FROM FuelPump p JOIN FETCH p.fuelTypes")
     List<FuelPump> findAllWithFuelType();
+
+    @Query("SELECT p.id FROM FuelPump p")
+    Page<Long> findPageIds(Pageable pageable);
+
+    @Query("SELECT DISTINCT p FROM FuelPump p LEFT JOIN FETCH p.fuelTypes WHERE p.id IN :ids")
+    List<FuelPump> findAllByIdInWithFuelTypes(@Param("ids") Collection<Long> ids);
 }
 
 

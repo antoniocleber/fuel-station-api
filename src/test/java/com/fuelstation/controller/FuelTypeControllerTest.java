@@ -5,13 +5,17 @@ import com.fuelstation.exception.ConflictException;
 import com.fuelstation.exception.ResourceNotFoundException;
 import com.fuelstation.model.dto.request.FuelTypeRequest;
 import com.fuelstation.model.dto.response.FuelTypeResponse;
+import com.fuelstation.model.dto.response.PageResponse;
 import com.fuelstation.service.FuelTypeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -20,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.*;
@@ -73,23 +78,51 @@ class FuelTypeControllerTest {
         @Test
         @DisplayName("deve retornar 200 com lista de combustíveis")
         void shouldReturn200WithList() throws Exception {
-            given(fuelTypeService.findAll()).willReturn(List.of(gasolinaResponse));
+            given(fuelTypeService.findAll(any(Pageable.class)))
+                    .willReturn(new PageResponse<>(List.of(gasolinaResponse), 0, 20, 1, 1, true, true));
 
             mockMvc.perform(get(BASE_URL).accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.length()").value(1))
-                    .andExpect(jsonPath("$[0].name").value("Gasolina Comum"))
-                    .andExpect(jsonPath("$[0].pricePerLiter").value(5.890));
+                    .andExpect(jsonPath("$.content.length()").value(1))
+                    .andExpect(jsonPath("$.content[0].name").value("Gasolina Comum"))
+                    .andExpect(jsonPath("$.content[0].pricePerLiter").value(5.890))
+                    .andExpect(jsonPath("$.totalElements").value(1));
         }
 
         @Test
         @DisplayName("deve retornar 200 com lista vazia")
         void shouldReturn200WithEmptyList() throws Exception {
-            given(fuelTypeService.findAll()).willReturn(List.of());
+            given(fuelTypeService.findAll(any(Pageable.class)))
+                    .willReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, true, true));
 
             mockMvc.perform(get(BASE_URL).accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.length()").value(0));
+                    .andExpect(jsonPath("$.content.length()").value(0));
+        }
+
+        @Test
+        @DisplayName("deve repassar page, size e sort para o service")
+        void shouldForwardPaginationParams() throws Exception {
+            given(fuelTypeService.findAll(any(Pageable.class)))
+                    .willReturn(new PageResponse<>(List.of(gasolinaResponse), 2, 5, 11, 3, false, true));
+
+            mockMvc.perform(get(BASE_URL)
+                            .param("page", "2")
+                            .param("size", "5")
+                            .param("sort", "name,desc")
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.page").value(2))
+                    .andExpect(jsonPath("$.size").value(5));
+
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            then(fuelTypeService).should().findAll(pageableCaptor.capture());
+
+            Pageable pageable = pageableCaptor.getValue();
+            assertThat(pageable.getPageNumber()).isEqualTo(2);
+            assertThat(pageable.getPageSize()).isEqualTo(5);
+            assertThat(pageable.getSort().getOrderFor("name")).isNotNull();
+            assertThat(pageable.getSort().getOrderFor("name").getDirection()).isEqualTo(Sort.Direction.DESC);
         }
     }
 
