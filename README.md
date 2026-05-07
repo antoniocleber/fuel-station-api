@@ -1,116 +1,165 @@
 # Fuel Station API
 
-[![Java](https://img.shields.io/badge/Java-18-orange)](https://openjdk.java.net/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-green)](https://spring.io/projects/spring-boot)
-[![Gradle](https://img.shields.io/badge/Gradle-8.5-blue)](https://gradle.org/)
+[![Java](https://img.shields.io/badge/Java-21-orange)](https://openjdk.org/projects/jdk/21/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.0-green)](https://spring.io/projects/spring-boot)
+[![Gradle](https://img.shields.io/badge/Gradle-8.x-blue)](https://gradle.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
-## 📋 Sobre o Projeto
+API REST para gerenciamento de um posto de combustivel. O projeto cobre cadastro de tipos de combustivel, bombas, abastecimentos, relatorios agregados, migracoes de banco com Flyway e documentacao OpenAPI.
 
-API REST completa para gerenciamento de um posto de combustível, desenvolvida com Spring Boot. Este projeto demonstra uma **refatoração completa** de relacionamento JPA de **ManyToOne para ManyToMany**, incluindo validações de negócio, testes unitários e documentação extensiva.
+## Visao Geral
 
-### 🎯 Funcionalidades
+### Principais capacidades
 
-- ✅ **CRUD completo** de tipos de combustível
-- ✅ **CRUD completo** de bombas de combustível (com múltiplos tipos)
-- ✅ **Registro de abastecimentos** com histórico
-- ✅ **Relacionamento ManyToMany** entre bombas e tipos de combustível
-- ✅ **Validação de negócio:** bomba deve ter pelo menos 1 tipo de combustível
-- ✅ **Documentação Swagger/OpenAPI**
-- ✅ **Testes unitários** completos
-- ✅ **Migrações Flyway** automáticas
+- CRUD de tipos de combustivel
+- CRUD de bombas com multiplos tipos de combustivel
+- CRUD de abastecimentos com filtros por bomba e periodo
+- Relatorio consolidado de abastecimentos por bomba
+- Paginacao padrao nos endpoints de listagem
+- Validacoes de negocio e tratamento centralizado de erros
+- Swagger UI, H2 Console e Actuator para suporte operacional
 
-### 🏗️ Arquitetura
+### Stack
 
-- **Backend:** Spring Boot 3.2 + Java 18
-- **Banco:** H2 (desenvolvimento) / PostgreSQL (produção)
-- **ORM:** JPA/Hibernate com relacionamentos ManyToMany
-- **Mapeamento:** MapStruct para conversão DTO
-- **Testes:** JUnit 5 + Mockito
-- **Documentação:** Swagger/OpenAPI
-- **Build:** Gradle
+- Java 21
+- Spring Boot 3.5.0
+- Spring Web
+- Spring Data JPA
+- Spring Validation
+- Flyway
+- H2 Database
+- MapStruct
+- Lombok
+- Springdoc OpenAPI
+- JUnit 5, Mockito, JaCoCo e Checkstyle
 
----
+## Estrutura do Projeto
 
-## 🚀 Início Rápido
+```text
+fuel-station/
+├── src/main/java/com/fuelstation
+│   ├── config
+│   ├── controller
+│   ├── exception
+│   ├── mapper
+│   ├── model
+│   ├── repository
+│   └── service
+├── src/main/resources
+│   ├── application.yml
+│   └── db/migration
+├── src/test/java/com/fuelstation
+└── docs
+```
 
-### Pré-requisitos
-- Java 18+
-- Gradle 8.5+
+## Como Executar
 
-### Instalação e Execução
+### Pre-requisitos
+
+- JDK 21
+- PowerShell ou terminal com permissao para executar o Gradle Wrapper
+
+### Subir localmente
 
 ```bash
-# 1. Clonar repositório
-git clone https://github.com/SEU_USERNAME/fuel-station-api.git
-cd fuel-station-api
+git clone <repo-url>
+cd fuel-station
+./gradlew clean test
+./gradlew bootRun
+```
 
-# 2. Compilar
-gradlew.bat clean compile
+No Windows, se preferir:
 
-# 3. Executar testes
-gradlew.bat test
-
-# 4. Rodar aplicação
+```powershell
+gradlew.bat clean test
 gradlew.bat bootRun
 ```
 
-### Acesso
-- **API:** http://localhost:8080
-- **Swagger UI:** http://localhost:8080/swagger-ui.html
-- **H2 Console:** http://localhost:8080/h2-console
+### Endpoints locais
 
----
+- API: `http://localhost:8080`
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8080/api-docs`
+- H2 Console: `http://localhost:8080/h2-console`
+- Actuator Health: `http://localhost:8080/actuator/health`
+- Actuator Info: `http://localhost:8080/actuator/info`
 
-## 📚 Documentação
+## Configuracao
 
-Toda documentação está organizada na pasta `docs/`:
+As configuracoes principais estao em `src/main/resources/application.yml`.
 
-### 📖 Comece Aqui
-- [**00_COMECE_AQUI.md**](docs/00_COMECE_AQUI.md) - Guia de início rápido (Português)
-- [**START_HERE.md**](docs/START_HERE.md) - Quick start guide (English)
+### Banco local
 
-### 🏛️ Arquitetura e Padrões
-- [**AGENTS.md**](docs/AGENTS.md) - Padrões do projeto e convenções
-- [**REFACTORING_MANYTOMANY.md**](docs/REFACTORING_MANYTOMANY.md) - Detalhes da refatoração técnica
+- URL: `jdbc:h2:file:./data/fuelstation;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE`
+- Usuario: `sa`
+- Senha: vazia
 
-### 💻 Uso da API
-- [**API_USAGE_EXAMPLES.md**](docs/API_USAGE_EXAMPLES.md) - Exemplos práticos de requisições
-- [**VALIDATION_GUIDE.md**](docs/VALIDATION_GUIDE.md) - Guia completo de testes
+### CORS
 
-### 📊 Relatórios
-- [**REFACTORING_FINAL_REPORT.md**](docs/REFACTORING_FINAL_REPORT.md) - Sumário executivo
-- [**REFACTORING_SUMMARY.md**](docs/REFACTORING_SUMMARY.md) - Checklist completo
-- [**RELATORIO_GERAL_CONSOLIDADO.md**](docs/RELATORIO_GERAL_CONSOLIDADO.md) - Relatório consolidado
+O backend permite, por padrao, chamadas vindas de `http://localhost:5173`, conforme [CorsConfig.java](src/main/java/com/fuelstation/config/CorsConfig.java).
 
-### 🧪 Testes
-- [**TESTES_REFATORADOS.md**](docs/TESTES_REFATORADOS.md) - Mudanças nos testes
-- [**EXEMPLOS_TESTES_NOVOS.md**](docs/EXEMPLOS_TESTES_NOVOS.md) - Código dos novos testes
+### Documentacao e observabilidade
 
-### 📋 Índices
-- [**DOCUMENTATION_INDEX.md**](docs/DOCUMENTATION_INDEX.md) - Índice completo
-- [**DOCUMENTACAO_COMPLETA.md**](docs/DOCUMENTACAO_COMPLETA.md) - Documentação completa
+- Swagger habilitado por Springdoc
+- Actuator com `health`, `info` e `metrics`
+- Flyway executado automaticamente na inicializacao
 
----
+## Endpoints Principais
 
-## 📄 Paginação nas Listagens
+### Tipos de combustivel
 
-As listagens de `fuel-types`, `fuel-pumps` e `fuelings` agora retornam `PageResponse`.
+- `GET /api/v1/fuel-types`
+- `GET /api/v1/fuel-types/{id}`
+- `POST /api/v1/fuel-types`
+- `PUT /api/v1/fuel-types/{id}`
+- `DELETE /api/v1/fuel-types/{id}`
 
-### Query params suportados
-- `page` (default `0`)
-- `size` (default `20`)
-- `sort` (ex.: `sort=name,asc` ou `sort=fuelingDate,desc`)
+### Bombas
 
-### Exemplos
+- `GET /api/v1/fuel-pumps`
+- `GET /api/v1/fuel-pumps/{id}`
+- `POST /api/v1/fuel-pumps`
+- `PUT /api/v1/fuel-pumps/{id}`
+- `DELETE /api/v1/fuel-pumps/{id}`
 
-```bash
-GET /api/v1/fuel-types?page=0&size=10&sort=name,asc
-GET /api/v1/fuel-pumps?page=1&size=5&sort=name,desc
-GET /api/v1/fuelings?pumpId=1&startDate=2025-01-01&endDate=2025-01-31&page=0&size=20&sort=fuelingDate,desc
-```
+### Abastecimentos
 
-### Envelope de resposta
+- `GET /api/v1/fuelings`
+- `GET /api/v1/fuelings/{id}`
+- `POST /api/v1/fuelings`
+- `PUT /api/v1/fuelings/{id}`
+- `DELETE /api/v1/fuelings/{id}`
+
+Filtros suportados em `GET /api/v1/fuelings`:
+
+- `pumpId`
+- `startDate`
+- `endDate`
+- `page`
+- `size`
+- `sort`
+
+### Relatorios
+
+- `GET /api/v1/reports/fuelings`
+
+Filtros suportados:
+
+- `pumpId`
+- `startDate`
+- `endDate`
+
+## Paginacao
+
+Os endpoints de listagem retornam `PageResponse<T>`.
+
+### Parametros comuns
+
+- `page` com default `0`
+- `size` com default `20`
+- `sort`, por exemplo `sort=name,asc` ou `sort=fuelingDate,desc`
+
+### Exemplo de resposta
 
 ```json
 {
@@ -124,143 +173,44 @@ GET /api/v1/fuelings?pumpId=1&startDate=2025-01-01&endDate=2025-01-31&page=0&siz
 }
 ```
 
----
+## Testes e Qualidade
 
-## 🔄 Refatoração ManyToMany
-
-Este projeto demonstra uma **refatoração completa** de relacionamento JPA:
-
-### Antes (ManyToOne)
-```java
-// FuelPump.java
-@ManyToOne
-private FuelType fuelType;
-```
-
-### Depois (ManyToMany)
-```java
-// FuelPump.java
-@ManyToMany
-@JoinTable(name = "fuel_pump_fuel_type")
-private Set<FuelType> fuelTypes;
-```
-
-### Mudanças Incluídas
-- ✅ **11 arquivos** de código modificados
-- ✅ **Regra de negócio** implementada (mínimo 1 combustível)
-- ✅ **DTOs atualizados** para múltiplos IDs
-- ✅ **Queries JPQL** corrigidas
-- ✅ **Testes refatorados** (9 testes unitários)
-- ✅ **Migração Flyway** V3 criada
-- ✅ **Documentação completa** (~2000 linhas)
-
----
-
-## 🧪 Testes
+### Comandos uteis
 
 ```bash
-# Executar todos os testes
-gradlew.bat test
-
-# Executar testes específicos
-gradlew.bat test --tests FuelPumpServiceTest
-
-# Com relatório de cobertura
-gradlew.bat jacocoTestReport
+./gradlew test
+./gradlew jacocoTestReport
+./gradlew jacocoTestCoverageVerification
+./gradlew checkstyleMain
+./gradlew checkstyleTest
 ```
 
-### Cobertura de Testes
-- **9 testes unitários** no FuelPumpService
-- **Validação completa** da regra de negócio
-- **Mocks corretos** sem "Unnecessary stubbings"
+### O que ja esta configurado
 
----
+- JUnit 5 como plataforma de testes
+- JaCoCo com geracao de relatorio HTML e XML
+- Verificacao minima de cobertura em `70%`
+- Checkstyle com configuracao dedicada em `config/checkstyle/checkstyle.xml`
 
-## 🗄️ Banco de Dados
+## Documentacao Complementar
 
-### Migrações Flyway
-- **V1:** Schema inicial
-- **V2:** Dados de exemplo
-- **V3:** Refatoração ManyToMany (nova tabela de junção)
+A pasta `docs/` concentra material adicional. Pontos de entrada mais uteis:
 
-### Configuração H2
-- **URL:** `jdbc:h2:file:./data/fuelstation`
-- **Console:** http://localhost:8080/h2-console
-- **User:** sa
-- **Password:** (vazio)
+- [docs/00_COMECE_AQUI.md](docs/00_COMECE_AQUI.md)
+- [docs/START_HERE.md](docs/START_HERE.md)
+- [docs/API_USAGE_EXAMPLES.md](docs/API_USAGE_EXAMPLES.md)
+- [docs/VALIDATION_GUIDE.md](docs/VALIDATION_GUIDE.md)
+- [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)
+- [docs/AGENTS.md](docs/AGENTS.md)
 
----
+## Melhorias Futuras Recomendadas
 
-## 📦 Build e Dependências
+- Externalizar origens CORS para variavel de ambiente ou perfil
+- Documentar exemplos de payload de erro e regras de validacao no README
+- Adicionar secao de deploy com perfil para PostgreSQL
+- Incluir comando de bootstrap integrado com frontend em ambiente local
+- Versionar exemplos de `.env` e contratos de integracao frontend/backend
 
-### Gradle Tasks Principais
-```bash
-gradlew.bat clean          # Limpar build
-gradlew.bat compile        # Compilar código
-gradlew.bat test           # Executar testes
-gradlew.bat bootRun        # Executar aplicação
-gradlew.bat bootJar        # Criar JAR executável
-```
+## Licenca
 
-### Dependências Principais
-- Spring Boot Starter Web
-- Spring Boot Starter Data JPA
-- Spring Boot Starter Validation
-- H2 Database
-- Flyway Migration
-- MapStruct
-- Lombok
-- JUnit 5 + Mockito
-
----
-
-## 🤝 Contribuição
-
-1. Fork o projeto
-2. Crie uma branch (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -am 'Adiciona nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
-5. Abra um Pull Request
-
-### Padrões de Código
-- Consulte [**AGENTS.md**](docs/AGENTS.md) para convenções
-- Use checkstyle: `gradlew.bat checkstyleMain`
-
----
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para detalhes.
-
----
-
-## 📞 Suporte
-
-Para dúvidas ou sugestões:
-
-1. **Leia a documentação** na pasta `docs/`
-2. **Consulte os exemplos** em `API_USAGE_EXAMPLES.md`
-3. **Verifique os testes** em `VALIDATION_GUIDE.md`
-
-### Contato
-- **Issues:** Use o GitHub Issues
-- **Discussions:** GitHub Discussions
-
----
-
-## 🎯 Destaques do Projeto
-
-- ✅ **Refatoração Completa** ManyToOne → ManyToMany
-- ✅ **Regra de Negócio** implementada e validada
-- ✅ **Documentação Extensiva** (2000+ linhas)
-- ✅ **Testes Completos** sem redundâncias
-- ✅ **Código Limpo** seguindo padrões
-- ✅ **Produção Ready** com migrações automáticas
-
----
-
-**⭐ Se este projeto foi útil, dê uma estrela no GitHub!**
-
----
-
-*Desenvolvido com ❤️ usando GitHub Copilot*
+MIT. Veja [LICENSE](LICENSE).
