@@ -64,7 +64,7 @@ public interface FuelingRepository extends JpaRepository<Fueling, Long> {
      * Filtra abastecimentos por bomba e/ou intervalo de datas.
      * Usa DISTINCT para evitar duplicatas quando faz JOIN em coleção (fuelTypes).
      *
-     * @param pumpId    ID da bomba (nullable)
+     * @param pumpIds   IDs das bombas (nullable)
      * @param startDate data inicial (nullable)
      * @param endDate   data final (nullable)
      * @return lista filtrada
@@ -74,13 +74,13 @@ public interface FuelingRepository extends JpaRepository<Fueling, Long> {
             JOIN FETCH f.pump p
             JOIN FETCH f.fuelType ft
             LEFT JOIN FETCH p.fuelTypes
-            WHERE (:pumpId IS NULL OR p.id = :pumpId)
+            WHERE (:pumpIds IS NULL OR p.id IN :pumpIds)
               AND (:startDate IS NULL OR f.fuelingDate >= :startDate)
               AND (:endDate IS NULL OR f.fuelingDate <= :endDate)
             ORDER BY f.fuelingDate DESC
             """)
     List<Fueling> findWithFilters(
-            @Param("pumpId") Long pumpId,
+            @Param("pumpIds") List<Long> pumpIds,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Controller REST para relatórios de abastecimentos.
@@ -33,7 +34,7 @@ public class ReportController {
     /**
      * Gera relatório de abastecimentos agrupados por bomba de combustível.
      *
-     * @param pumpId    filtra por bomba (opcional)
+     * @param pumpIds   filtra por bombas (opcional)
      * @param startDate data inicial do período (opcional)
      * @param endDate   data final do período (opcional)
      * @return relatório com dados agrupados e totalizados
@@ -43,8 +44,8 @@ public class ReportController {
             description = "Retorna os abastecimentos agrupados por bomba com totais de litros e valores")
     @ApiResponse(responseCode = "200", description = "Relatório gerado com sucesso")
     public ResponseEntity<ReportResponse> getFuelingsReport(
-            @Parameter(description = "ID da bomba para filtrar")
-            @RequestParam(required = false) Long pumpId,
+            @Parameter(description = "IDs das bombas para filtrar")
+            @RequestParam(required = false) List<Long> pumpIds,
 
             @Parameter(description = "Data inicial do período (yyyy-MM-dd)")
             @RequestParam(required = false)
@@ -54,6 +55,6 @@ public class ReportController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
-        return ResponseEntity.ok(reportService.generateReport(pumpId, startDate, endDate));
+        return ResponseEntity.ok(reportService.generateReport(pumpIds, startDate, endDate));
     }
 }

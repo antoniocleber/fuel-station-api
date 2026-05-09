@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
@@ -44,6 +45,7 @@ public class FuelingService {
     private final FuelPumpService fuelPumpService;
     private final FuelTypeService fuelTypeService;
     private final FuelingMapper fuelingMapper;
+    private final Clock businessClock;
 
     // ── Listagem ───────────────────────────────────────────────────────────────
 
@@ -113,6 +115,7 @@ public class FuelingService {
         FuelPump pump = fuelPumpService.findEntityById(request.getPumpId());
         FuelType fuelType = fuelTypeService.findEntityById(request.getFuelTypeId());
 
+        validateFuelingDateForCreation(request.getFuelingDate());
         validateFuelTypeInPump(pump, fuelType);
         calculateMissingValues(request, fuelType);
 
@@ -134,29 +137,12 @@ public class FuelingService {
      * @param id      ID do abastecimento
      * @param request novos dados
      * @return DTO atualizado
-     * @throws ResourceNotFoundException se abastecimento ou bomba não forem encontrados
+     * @throws BusinessException abastecimentos existentes dependem de aprovação para atualização
      */
     @Transactional
     public FuelingResponse update(Long id, FuelingRequest request) {
-        log.info("Atualizando abastecimento id={}", id);
-
-        Fueling entity = fuelingRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(RESOURCE_NAME, "id", id));
-
-        FuelPump pump = fuelPumpService.findEntityById(request.getPumpId());
-        FuelType fuelType = fuelTypeService.findEntityById(request.getFuelTypeId());
-
-        validateFuelTypeInPump(pump, fuelType);
-        calculateMissingValues(request, fuelType);
-
-        fuelingMapper.updateEntityFromRequest(request, entity);
-        entity.setPump(pump);
-        entity.setFuelType(fuelType);
-
-        fuelingRepository.save(entity);
-        log.info("Abastecimento id={} atualizado", id);
-
-        return findById(id);
+        log.info("Bloqueando atualização de abastecimento id={} até fluxo de aprovação existir", id);
+        throw new BusinessException("Abastecimentos existentes não podem ser atualizados sem aprovação.");
     }
 
     // ── Exclusão ───────────────────────────────────────────────────────────────
@@ -194,6 +180,12 @@ public class FuelingService {
             throw new BusinessException(String.format(
                     "O tipo de combustível '%s' (id=%d) não está associado à bomba '%s' (id=%d).",
                     fuelType.getName(), fuelType.getId(), pump.getName(), pump.getId()));
+        }
+    }
+
+    private void validateFuelingDateForCreation(LocalDate fuelingDate) {
+        if (!LocalDate.now(businessClock).equals(fuelingDate)) {
+            throw new BusinessException("Novos abastecimentos só podem ser criados no dia corrente.");
         }
     }
 

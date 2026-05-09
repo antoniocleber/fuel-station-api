@@ -32,16 +32,18 @@ public class ReportService {
     /**
      * Gera o relatório de abastecimentos agrupados por bomba.
      *
-     * @param pumpId    filtra por bomba (nullable)
+     * @param pumpIds   filtra por bombas (nullable)
      * @param startDate data inicial (nullable)
      * @param endDate   data final (nullable)
      * @return relatório com dados agrupados e totalizados
      */
     @Transactional(readOnly = true)
-    public ReportResponse generateReport(Long pumpId, LocalDate startDate, LocalDate endDate) {
-        log.debug("Gerando relatório: pumpId={}, startDate={}, endDate={}", pumpId, startDate, endDate);
+    public ReportResponse generateReport(List<Long> pumpIds, LocalDate startDate, LocalDate endDate) {
+        List<Long> normalizedPumpIds = (pumpIds == null || pumpIds.isEmpty()) ? null : pumpIds;
 
-        List<Fueling> fuelings = fuelingRepository.findWithFilters(pumpId, startDate, endDate);
+        log.debug("Gerando relatório: pumpIds={}, startDate={}, endDate={}", normalizedPumpIds, startDate, endDate);
+
+        List<Fueling> fuelings = fuelingRepository.findWithFilters(normalizedPumpIds, startDate, endDate);
 
         // Agrupar por bomba mantendo a ordem de inserção
         Map<Long, List<Fueling>> fuelingsByPump = fuelings.stream()

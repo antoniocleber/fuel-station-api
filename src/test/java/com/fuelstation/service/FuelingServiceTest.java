@@ -23,8 +23,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -44,6 +47,7 @@ class FuelingServiceTest {
     @Mock private FuelPumpService fuelPumpService;
     @Mock private FuelTypeService fuelTypeService;
     @Mock private FuelingMapper fuelingMapper;
+    @Mock private Clock clock;
 
     @InjectMocks
     private FuelingService fuelingService;
@@ -53,9 +57,18 @@ class FuelingServiceTest {
     private Fueling fueling1;
     private FuelingResponse fuelingResponse1;
     private FuelingRequest fuelingRequest;
+    private LocalDate today;
 
     @BeforeEach
     void setUp() {
+        Instant now = Instant.parse("2026-05-09T12:00:00Z");
+        ZoneId businessZone = ZoneId.of("America/Sao_Paulo");
+
+        given(clock.instant()).willReturn(now);
+        given(clock.getZone()).willReturn(businessZone);
+
+        today = LocalDate.now(clock);
+
         gasolina = FuelType.builder()
                 .id(1L).name("Gasolina Comum")
                 .pricePerLiter(new BigDecimal("5.890"))
@@ -74,7 +87,7 @@ class FuelingServiceTest {
                 .id(1L)
                 .pump(bomba1)
                 .fuelType(gasolina)
-                .fuelingDate(LocalDate.of(2025, 1, 10))
+                .fuelingDate(today)
                 .liters(new BigDecimal("40.000"))
                 .totalValue(new BigDecimal("235.60"))
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
@@ -88,9 +101,19 @@ class FuelingServiceTest {
         fuelingRequest = new FuelingRequest();
         fuelingRequest.setPumpId(1L);
         fuelingRequest.setFuelTypeId(1L);
-        fuelingRequest.setFuelingDate(LocalDate.of(2025, 1, 10));
+        fuelingRequest.setFuelingDate(today);
         fuelingRequest.setLiters(new BigDecimal("40.000"));
         fuelingRequest.setTotalValue(new BigDecimal("235.60"));
+    }
+
+    private FuelingRequest createValidRequest() {
+        FuelingRequest request = new FuelingRequest();
+        request.setPumpId(1L);
+        request.setFuelTypeId(1L);
+        request.setFuelingDate(today);
+        request.setLiters(new BigDecimal("40.000"));
+        request.setTotalValue(new BigDecimal("235.60"));
+        return request;
     }
 
     @Nested
@@ -161,10 +184,7 @@ class FuelingServiceTest {
         @Test
         @DisplayName("deve calcular totalValue quando apenas liters informado")
         void shouldCalculateTotalValueFromLiters() {
-            FuelingRequest req = new FuelingRequest();
-            req.setPumpId(1L);
-            req.setFuelTypeId(1L);
-            req.setFuelingDate(LocalDate.of(2025, 1, 10));
+            FuelingRequest req = createValidRequest();
             req.setLiters(new BigDecimal("40.000"));
             req.setTotalValue(null); // apenas liters
 
@@ -184,10 +204,7 @@ class FuelingServiceTest {
         @Test
         @DisplayName("deve calcular liters quando apenas totalValue informado")
         void shouldCalculateLitersFromTotalValue() {
-            FuelingRequest req = new FuelingRequest();
-            req.setPumpId(1L);
-            req.setFuelTypeId(1L);
-            req.setFuelingDate(LocalDate.of(2025, 1, 10));
+            FuelingRequest req = createValidRequest();
             req.setLiters(null); // apenas totalValue
             req.setTotalValue(new BigDecimal("235.60"));
 
@@ -207,10 +224,7 @@ class FuelingServiceTest {
         @Test
         @DisplayName("deve lançar BusinessException quando liters e totalValue não informados")
         void shouldThrowWhenNeitherLitersNorTotalValue() {
-            FuelingRequest req = new FuelingRequest();
-            req.setPumpId(1L);
-            req.setFuelTypeId(1L);
-            req.setFuelingDate(LocalDate.of(2025, 1, 10));
+            FuelingRequest req = createValidRequest();
             req.setLiters(null);
             req.setTotalValue(null);
 
@@ -233,10 +247,8 @@ class FuelingServiceTest {
                     .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
                     .build();
 
-            FuelingRequest req = new FuelingRequest();
-            req.setPumpId(1L);
+            FuelingRequest req = createValidRequest();
             req.setFuelTypeId(4L);
-            req.setFuelingDate(LocalDate.of(2025, 1, 10));
             req.setLiters(new BigDecimal("40.000"));
 
             given(fuelPumpService.findEntityById(1L)).willReturn(bomba1);
@@ -245,6 +257,38 @@ class FuelingServiceTest {
             assertThatThrownBy(() -> fuelingService.create(req))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("não está associado à bomba");
+
+            then(fuelingRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("deve lançar BusinessException quando a data do abastecimento é anterior ao dia atual")
+        void shouldThrowWhenFuelingDateIsInThePast() {
+            FuelingRequest req = createValidRequest();
+            req.setFuelingDate(today.minusDays(1));
+
+            given(fuelPumpService.findEntityById(1L)).willReturn(bomba1);
+            given(fuelTypeService.findEntityById(1L)).willReturn(gasolina);
+
+            assertThatThrownBy(() -> fuelingService.create(req))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("dia corrente");
+
+            then(fuelingRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("deve lançar BusinessException quando a data do abastecimento é posterior ao dia atual")
+        void shouldThrowWhenFuelingDateIsInTheFuture() {
+            FuelingRequest req = createValidRequest();
+            req.setFuelingDate(today.plusDays(1));
+
+            given(fuelPumpService.findEntityById(1L)).willReturn(bomba1);
+            given(fuelTypeService.findEntityById(1L)).willReturn(gasolina);
+
+            assertThatThrownBy(() -> fuelingService.create(req))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("dia corrente");
 
             then(fuelingRepository).should(never()).save(any());
         }
@@ -259,6 +303,27 @@ class FuelingServiceTest {
                     .isInstanceOf(ResourceNotFoundException.class);
 
             then(fuelingRepository).should(never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("update()")
+    class Update {
+
+        @Test
+        @DisplayName("deve lançar BusinessException porque abastecimentos existentes não podem ser atualizados sem aprovação")
+        void shouldBlockUpdatingExistingFuelingWithoutApproval() {
+            FuelingRequest req = createValidRequest();
+            req.setFuelingDate(today.minusDays(10));
+
+            assertThatThrownBy(() -> fuelingService.update(1L, req))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("não podem ser atualizados sem aprovação");
+
+            then(fuelingRepository).shouldHaveNoInteractions();
+            then(fuelPumpService).shouldHaveNoInteractions();
+            then(fuelTypeService).shouldHaveNoInteractions();
+            then(fuelingMapper).shouldHaveNoInteractions();
         }
     }
 

@@ -30,7 +30,6 @@ public class FuelingRequest {
     private Long fuelTypeId;
 
     @NotNull(message = "A data do abastecimento é obrigatória.")
-    @PastOrPresent(message = "A data do abastecimento não pode ser futura.")
     private LocalDate fuelingDate;
 
     @DecimalMin(value = "0.001", inclusive = true, message = "A litragem deve ser maior que zero.")
